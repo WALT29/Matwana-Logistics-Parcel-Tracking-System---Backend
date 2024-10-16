@@ -1,9 +1,13 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import validates, back_populates
+from sqlalchemy import MetaData
+from sqlalchemy.orm import validates
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy_serializer import SerializerMixin
 
-db = SQLAlchemy()
+metadata = MetaData(naming_convention={
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+})
+db = SQLAlchemy(metadata=metadata)
 
 
 class User(db.Model,SerializerMixin):
@@ -13,24 +17,14 @@ class User(db.Model,SerializerMixin):
     phone_number = db.Column(db.String, nullable=False, unique=True)
     email = db.Column(db.String, unique=True)
     password = db.Column(db.String, nullable=False)
-    role = db.Column(db.String, nullable=False)  # (customers,admin or customer service)
+    role = db.Column(db.String, nullable=False,default='customer')  # (customers,admin or customer service)
     
     # the relationshjps
     sent_parcels = db.relationship('Parcel', foreign_keys='Parcel.sender_id', back_populates='sender')
     received_parcels = db.relationship('Parcel', foreign_keys='Parcel.recipient_id', back_populates='recipient')
-    parcels = db.relationship('UserParcelAssignment', back_populates='user', cascade='all, delete-orphan')
-
-    @validates('phone_number')
-    def validate_phone(self, key, phone_number):
-        if not phone_number.is_digit() or len(phone_number) !=10:
-            raise ValueError("Phone number must be 10 digits and contain only numbers.")
-        return phone_number
     
-    @validates('email')
-    def validate_email(self,key,email):
-        if email and '@' not in email:
-            raise ValueError("Please enter a valid email format")
-        
+    #this is the relationship between customer service and the parcel 
+    parcels = db.relationship('UserParcelAssignment', back_populates='user', cascade='all, delete-orphan')    
     
     def __repr__(self):
         return f'<User {self.name}, Role: {self.role}>'
@@ -46,6 +40,7 @@ class Parcel(db.Model,SerializerMixin):
     destination = db.Column(db.String, nullable=False)
     status = db.Column(db.String, nullable=False, default='Pending')  # (pending,in_transit,delivered)
     shipping_cost = db.Column(db.Float)
+    created_at = db.Column(db.DateTime, default=db.func.now())
 
     #the foreign ids
     sender_id = db.Column(db.Integer, db.ForeignKey('users.id'))
@@ -75,40 +70,37 @@ class Parcel(db.Model,SerializerMixin):
         return f'<Parcel {self.tracking_number}, {self.status}, Cost: {self.shipping_cost}>'
 
 
-class Vehicle(db.Model):
+class Vehicle(db.Model,SerializerMixin):
     __tablename__ = 'vehicles'
     id = db.Column(db.Integer, primary_key=True)
     number_plate = db.Column(db.String, unique=True, nullable=False)
+    capacity=db.Column(db.Float ,nullable=False)
     driver_name = db.Column(db.String, nullable=False)
     driver_phone = db.Column(db.String, nullable=False)
-
+    departure_time=db.Column(db.String)
+    expected_arrival_time=db.Column(db.String)
+    status=db.Column(db.String ,default='empty')
+    location_id=db.Column(db.Integer,db.ForeignKey('locations.id'))
+    
     parcels = db.relationship('Parcel', back_populates='vehicle')
+    location=db.relationship('Location',back_populates='vehicles')
+    
+    serialize_rules=('-location.vehicles',)
 
     def __repr__(self):
         return f'<Vehicle {self.number_plate}, Driver: {self.driver_name}>'
 
-class Shipment(db.Model):
-    __tablename__ = 'shipments'
-    id = db.Column(db.Integer, primary_key=True)
-    current_location = db.Column(db.String, nullable=False)
-    status = db.Column(db.String, nullable=False)  
-    updated_at = db.Column(db.DateTime, default=db.func.now())
-
-    parcel_id = db.Column(db.Integer, db.ForeignKey('parcels.id'))
-    parcel = db.relationship('Parcel')
-
-    vehicle_id = db.Column(db.Integer, db.ForeignKey('vehicles.id'))
-
-    def __repr__(self):
-        return f'<Shipment {self.id}, {self.current_location}>'
-
 # we have used this table for calculating the rates this table is only used by the admin who sets different rates
-class Location(db.Model):
+class Location(db.Model,SerializerMixin):
     __tablename__ = 'locations'
     id = db.Column(db.Integer, primary_key=True)
     origin = db.Column(db.String, nullable=False)
     destination = db.Column(db.String, nullable=False)
     cost_per_kg = db.Column(db.Float, nullable=False)
+    
+    vehicles=db.relationship(Vehicle,back_populates='location')
+    serialize_rules=('-vehicles.location',)
+    
 
     def __repr__(self):
         return f'<Location {self.origin} to {self.destination}, Cost: {self.cost_per_kg} per kg>'
@@ -117,7 +109,7 @@ class Location(db.Model):
 class UserParcelAssignment(db.Model,SerializerMixin):
     __tablename__ = 'user_parcel_assignments'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id')) #this is a customer service user
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id')) #this is a customer service/admin user
     parcel_id = db.Column(db.Integer, db.ForeignKey('parcels.id'))
 
     user = db.relationship('User', back_populates='parcels')
