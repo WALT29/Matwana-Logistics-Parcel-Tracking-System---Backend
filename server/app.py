@@ -2,7 +2,7 @@ from models import db,User,Parcel,Vehicle,Location,UserParcelAssignment
 from flask_migrate import Migrate
 from flask import Flask, request, make_response
 from flask_restful import Api, Resource
-from auth import auth_bp
+from auth import auth_bp,jwt
 import os
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -14,9 +14,11 @@ app=Flask(__name__)
 app.register_blueprint(auth_bp)
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['JWT_SECRET_KEY']='e173db52f146f6d5e957a922'
 app.json.compact = False
 
 db.init_app(app)
+jwt.init_app(app)
 api=Api(app)
 
 @app.route('/')

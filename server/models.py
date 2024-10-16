@@ -41,6 +41,11 @@ class User(db.Model,SerializerMixin):
     def get_user_by_name(cls,name):
         return cls.query.filter_by(name=name).first()
     
+    @classmethod
+    def get_user_by_phone(cls,phone_number):
+        return cls.query.filter_by(phone_number=phone_number).first()
+    
+    
     def save(self):
         db.session.add(self)
         db.session.commit()

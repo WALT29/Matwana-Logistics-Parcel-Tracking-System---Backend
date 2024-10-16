@@ -3,6 +3,10 @@ from flask import Blueprint,request,make_response
 from werkzeug.security import generate_password_hash,check_password_hash
 from flask_restful import Api, Resource
 
+from flask_jwt_extended import create_access_token,create_refresh_token,JWTManager,get_jwt_identity,jwt_required
+
+jwt=JWTManager()
+
 auth_bp = Blueprint('auth_bp',__name__, url_prefix='/auth')
 api=Api(auth_bp)
 
@@ -48,7 +52,34 @@ class Signup(Resource):
             "phone_number":phone_number,
             "password":password
         },201)
+
+class Login(Resource):
+    def post(self):
+        data=request.get_json()
+        phone_number=data['phone_number']
+        password=data['password']
         
+        user=User.get_user_by_phone(phone_number=phone_number)
+        
+        
+        if user and (user.check_password(password=password)):
+            access_token=create_access_token(identity=user.id)
+            refresh_token=create_refresh_token(identity=user.id)
+            
+            return make_response({
+                "message":"logged in successfully",
+                "tokes":{
+                    "access_token":access_token,
+                    "refresh_token":refresh_token
+                }
+            },200)
+        
+        else:
+            return make_response({
+                "message":"Invalid username or password"
+            },400)
+
+api.add_resource(Login,'/login')
 api.add_resource(Signup,'/signup')
         
         
