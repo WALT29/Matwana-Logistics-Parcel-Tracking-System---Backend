@@ -3,6 +3,7 @@ from sqlalchemy import MetaData
 from sqlalchemy.orm import validates
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy_serializer import SerializerMixin
+from werkzeug.security import generate_password_hash,check_password_hash
 
 metadata = MetaData(naming_convention={
     "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
@@ -29,6 +30,24 @@ class User(db.Model,SerializerMixin):
     
     def __repr__(self):
         return f'<User {self.name}, Role: {self.role}>'
+    
+    def set_password(self,password):
+        self.password=generate_password_hash(password)
+    
+    def check_password(self,password):
+        return check_password_hash(self.password,password)
+    
+    @classmethod
+    def get_user_by_name(cls,name):
+        return cls.query.filter_by(name=name).first()
+    
+    def save(self):
+        db.session.add(self)
+        db.session.commit()
+        
+    def delete(self):
+        db.session.delete(self)
+        db.session.commit()
 
 
 class Parcel(db.Model,SerializerMixin):

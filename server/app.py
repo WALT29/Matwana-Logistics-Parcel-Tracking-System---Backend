@@ -2,7 +2,7 @@ from models import db,User,Parcel,Vehicle,Location,UserParcelAssignment
 from flask_migrate import Migrate
 from flask import Flask, request, make_response
 from flask_restful import Api, Resource
-from flask_bcrypt import Bcrypt
+from auth import auth_bp
 import os
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -11,11 +11,11 @@ DATABASE = os.environ.get(
 
 app=Flask(__name__)
 
+app.register_blueprint(auth_bp)
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.json.compact = False
 
-bcrypt=Bcrypt(app)
 db.init_app(app)
 api=Api(app)
 
@@ -48,20 +48,23 @@ class Users(Resource):
         if len(password) <8 :
             errors.append('Password should be at least 8 characters')
         
+        user =User.get_user_by_name(name=name)
+        
+        if user is not None:
+            errors.append("User with that username exists")
+        
         if errors:
             return make_response({
                 "errors":errors
             },400)
             
-        hashed_password=bcrypt.generate_password_hash(password).decode('utf-8')
-        
         new_user=User(name=name,
                       phone_number=phone_number,
                       email=email,
-                      password=hashed_password,
                       role=role)
-        db.session.add(new_user)
-        db.session.commit()
+        
+        new_user.set_password(password=password)
+        new_user.save()
         
         return make_response({
             "name":name,
@@ -88,8 +91,7 @@ class User_by_id(Resource):
             },400)
         
         
-        db.session.delete(user)
-        db.session.commit()
+        user.delete()
         
         return make_response({
             "message":"user delete successfully"
