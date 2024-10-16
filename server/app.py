@@ -123,45 +123,45 @@ class Parcels(Resource):
         description=data['description']
         tracking_number=data['tracking_number']
         weight=data['weight']
-        origin=data['origin']
-        destination=data['destination']
-        status='pending'
-        shipping_cost=data['shipping_cost']
+        status=data['status']
         sender_id = data['sender_id']  
-        recipient_id = data['recipient_id']  
+        recipient_id = data['recipient_id']
+        location_id=data['location_id']  
         vehicle_id = data['vehicle_id']  
         
         user=User.query.filter_by(id=user_id).first()
         sender=User.query.filter_by(id=sender_id).first()
         recipient=User.query.filter_by(id=recipient_id).first()
-        vehicle=User.query.filter_by(id=vehicle_id).first()
+        vehicle=Vehicle.query.filter_by(id=vehicle_id).first()
+        location=Location.query.filter_by(id=location_id).first()
          
         if not user or user.role not in ['customer_service','admin']:
             return make_response({
                 "error":"Invalid user Id or insufficient permission"
             },403)
         
-        if not sender or not recipient or not vehicle:
+        if not sender or not recipient or not vehicle or not location:
             return make_response({
-                "error":"Please enter a valid sender,recipient and or vehicle"
+                "error":"Please enter a valid sender,recipient,vehicle or location details"
             },400)
+            
         
-        if not description or not weight or not shipping_cost:
+        if not description or not weight >0:
             return make_response({
                 "errors":"please enter  all parcel information"
             },400)
         
+        shipping_cost=location.cost_per_kg*weight
        
         parcel=Parcel(
             description=description,
             tracking_number=tracking_number,
             weight=weight,
-            origin=origin,
-            destination=destination,
             status=status,
             shipping_cost=shipping_cost,
             sender_id = sender_id,  
-            recipient_id = recipient_id,  
+            recipient_id = recipient_id,
+            location_id=location_id, 
             vehicle_id = vehicle_id  
             )
         user_parcel_assignment=UserParcelAssignment(user=user,parcel=parcel)

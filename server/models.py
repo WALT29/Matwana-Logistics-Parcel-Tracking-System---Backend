@@ -19,12 +19,13 @@ class User(db.Model,SerializerMixin):
     password = db.Column(db.String, nullable=False)
     role = db.Column(db.String, nullable=False,default='customer')  # (customers,admin or customer service)
     
-    # the relationshjps
+    # Relationships
     sent_parcels = db.relationship('Parcel', foreign_keys='Parcel.sender_id', back_populates='sender')
     received_parcels = db.relationship('Parcel', foreign_keys='Parcel.recipient_id', back_populates='recipient')
     
     #this is the relationship between customer service and the parcel 
     parcels = db.relationship('UserParcelAssignment', back_populates='user', cascade='all, delete-orphan')    
+    serialize_rules = ('-parcels', '-sent_parcels.sender', '-received_parcels.recipient', '-password')
     
     def __repr__(self):
         return f'<User {self.name}, Role: {self.role}>'
@@ -36,36 +37,25 @@ class Parcel(db.Model,SerializerMixin):
     description = db.Column(db.String, nullable=False)
     tracking_number = db.Column(db.String, unique=True, nullable=False)
     weight = db.Column(db.Float, nullable=False)
-    origin = db.Column(db.String, nullable=False)
-    destination = db.Column(db.String, nullable=False)
     status = db.Column(db.String, nullable=False, default='Pending')  # (pending,in_transit,delivered)
     shipping_cost = db.Column(db.Float)
     created_at = db.Column(db.DateTime, default=db.func.now())
 
-    #the foreign ids
+    #FOREIGN IDS
     sender_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     recipient_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    location_id=db.Column(db.Integer,db.ForeignKey('locations.id'))
     vehicle_id = db.Column(db.Integer, db.ForeignKey('vehicles.id'))
 
-    # the relationships
+    # Relationships
     sender = db.relationship('User', foreign_keys=[sender_id], back_populates='sent_parcels')
     recipient = db.relationship('User', foreign_keys=[recipient_id], back_populates='received_parcels')
     vehicle = db.relationship('Vehicle', back_populates='parcels')
-    
+    location=db.relationship('Location',back_populates='parcels')
     customer_service_assignments = db.relationship('UserParcelAssignment', back_populates='parcel', cascade='all, delete-orphan')
-
-    @validates('weight')
-    def validate_weight(self, key, weight):
-        assert weight > 0, "Weight must be positive number"
-        return weight
-
-    def calculate_shipping_cost(self):
-        location_rate = Location.query.filter_by(origin=self.origin, destination=self.destination).first()
-        if location_rate:
-            self.shipping_cost = location_rate.cost_per_kg * self.weight
-        else:
-            raise ValueError(f"No shipping rate available for {self.origin} to {self.destination}")
-
+    
+    serialize_rules = ('-sender.sent_parcels', '-recipient.received_parcels', '-vehicle.parcels', '-location.parcels', '-customer_service_assignments', 
+                       'id', 'tracking_number', 'status', 'shipping_cost', 'sender.name', 'recipient.name')
     def __repr__(self):
         return f'<Parcel {self.tracking_number}, {self.status}, Cost: {self.shipping_cost}>'
 
@@ -80,12 +70,15 @@ class Vehicle(db.Model,SerializerMixin):
     departure_time=db.Column(db.String)
     expected_arrival_time=db.Column(db.String)
     status=db.Column(db.String ,default='empty')
+    
+    #Foreign id
     location_id=db.Column(db.Integer,db.ForeignKey('locations.id'))
     
+    #Relationships
     parcels = db.relationship('Parcel', back_populates='vehicle')
     location=db.relationship('Location',back_populates='vehicles')
     
-    serialize_rules=('-location.vehicles',)
+    serialize_rules = ('-location.vehicles','parcels.vehicle')
 
     def __repr__(self):
         return f'<Vehicle {self.number_plate}, Driver: {self.driver_name}>'
@@ -98,8 +91,12 @@ class Location(db.Model,SerializerMixin):
     destination = db.Column(db.String, nullable=False)
     cost_per_kg = db.Column(db.Float, nullable=False)
     
+    #Relationships
+    parcels=db.relationship('Parcel',back_populates='location')
     vehicles=db.relationship(Vehicle,back_populates='location')
-    serialize_rules=('-vehicles.location',)
+    
+    serialize_rules = ('-vehicles.location', '-parcels.location')
+    
     
 
     def __repr__(self):
@@ -109,11 +106,15 @@ class Location(db.Model,SerializerMixin):
 class UserParcelAssignment(db.Model,SerializerMixin):
     __tablename__ = 'user_parcel_assignments'
     id = db.Column(db.Integer, primary_key=True)
+    
+    #FOREIGN ID
     user_id = db.Column(db.Integer, db.ForeignKey('users.id')) #this is a customer service/admin user
     parcel_id = db.Column(db.Integer, db.ForeignKey('parcels.id'))
 
+    #RELATIONSHIPS
     user = db.relationship('User', back_populates='parcels')
     parcel = db.relationship('Parcel', back_populates='customer_service_assignments')
+    serialize_rules = ('-user.parcels', '-parcel.customer_service_assignments')
 
     def __repr__(self):
         return f'<UserParcelAssignment User: {self.user_id}, Parcel: {self.parcel_id}>'
