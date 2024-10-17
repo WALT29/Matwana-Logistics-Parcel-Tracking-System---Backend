@@ -1,7 +1,7 @@
 from models import User,db
 from flask import Blueprint,request,make_response
 from flask_restful import Api, Resource
-from flask_jwt_extended import create_access_token,create_refresh_token,JWTManager,get_jwt_identity,jwt_required,get_jwt
+from flask_jwt_extended import create_access_token,create_refresh_token,JWTManager,get_jwt
 from functools import wraps
 
 jwt=JWTManager()
@@ -79,7 +79,7 @@ class Login(Resource):
         
         
         if user and (user.check_password(password=password)):
-            access_token=create_access_token(identity=user.id,additonal_claims={"role":user.role})
+            access_token=create_access_token(identity=user.id,additional_claims={"role":user.role})
             refresh_token=create_refresh_token(identity=user.id)
             
             return make_response({
