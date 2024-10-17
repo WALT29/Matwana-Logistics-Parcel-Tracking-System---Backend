@@ -4,6 +4,7 @@ from flask import Flask, request, make_response
 from flask_restful import Api, Resource
 from flask_jwt_extended import jwt_required
 from auth import auth_bp,jwt,allow
+from datetime import timedelta
 import os
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -12,15 +13,19 @@ DATABASE = os.environ.get(
 
 app=Flask(__name__)
 
-app.register_blueprint(auth_bp)
+
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY']='e173db52f146f6d5e957a922'
+app.config['JWT_ACCESS_TOKEN_EXPIRES']=timedelta(hours=1)
+app.config['JWT_REFRESH_TOKEN_EXPIRES']=timedelta(days=3)
+app.register_blueprint(auth_bp)
 app.json.compact = False
 
 db.init_app(app)
 jwt.init_app(app)
 api=Api(app)
+
 
 @app.route('/')
 def index():
