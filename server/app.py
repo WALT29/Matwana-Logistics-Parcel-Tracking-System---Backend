@@ -2,7 +2,8 @@ from models import db,User,Parcel,Vehicle,Location,UserParcelAssignment
 from flask_migrate import Migrate
 from flask import Flask, request, make_response
 from flask_restful import Api, Resource
-from auth import auth_bp,jwt
+from flask_jwt_extended import jwt_required
+from auth import auth_bp,jwt,allow
 import os
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -28,10 +29,14 @@ def index():
 ###################################################USER RESOURCE###################################################################
 
 class Users(Resource):
+    @jwt_required()
+    @allow(['admin'])
     def get(self):
         response_body=[user.to_dict() for user in User.query.all()]
         return make_response(response_body,200)
     
+    @jwt_required()
+    @allow(['admin'])
     def post(self):
         data=request.get_json()
         name=data['name']
@@ -77,6 +82,8 @@ class Users(Resource):
 api.add_resource(Users,'/users')
 
 class User_by_id(Resource):
+    @jwt_required()
+    @allow(['admin'])
     def get(self,id):
         user=User.query.filter_by(id=id).first()
         if not user:
@@ -85,6 +92,8 @@ class User_by_id(Resource):
             },400)
         return make_response(user.to_dict(),200)
     
+    @jwt_required()
+    @allow(['admin'])
     def delete(self,id):
         user=User.query.filter_by(id=id).first()
         if not user:
@@ -99,6 +108,8 @@ class User_by_id(Resource):
             "message":"user delete successfully"
         },200)
     
+    @jwt_required
+    @allow(['admin'])
     def put(self,id):
         user=User.query.filter_by(id=id).first()
         if not user:
@@ -117,10 +128,14 @@ api.add_resource(User_by_id,'/users/<int:id>')
 
 ############################################## PARCEL RESOURCE ###################################################################
 class Parcels(Resource):
+    @jwt_required()
+    @allow(['admin','customer_service'])
     def get(self):
         parcels=[parcel.to_dict() for parcel in Parcel.query.all()]
         return make_response(parcels,200)
     
+    @jwt_required()
+    @allow(['admin','customer_service'])
     def post(self):
         data=request.get_json()
         user_id=data['user_id']
@@ -178,6 +193,8 @@ class Parcels(Resource):
 api.add_resource(Parcels,'/parcels')
 
 class Parcel_by_id(Resource):
+    @jwt_required()
+    @allow(['admin','customer_service'])
     def get(self,id):
         parcel=Parcel.query.filter_by(id=id).first()
         
@@ -188,6 +205,8 @@ class Parcel_by_id(Resource):
         
         return make_response(parcel.to_dict(),200)
     
+    @jwt_required()
+    @allow(['admin','customer_service'])
     def delete(self,id):
         parcel=Parcel.query.filter_by(id=id).first()
         if not parcel:
@@ -200,6 +219,8 @@ class Parcel_by_id(Resource):
             "message":"parcel successfully deleted"
         },204)
     
+    @jwt_required()
+    @allow(['admin','customer_service'])
     def put(self,id):
         parcel=Parcel.query.filter_by(id=id).first()
         data=request.get_json()
@@ -221,6 +242,7 @@ api.add_resource(Parcel_by_id,'/parcels/<int:id>')
 ################################################## VEHICLES RESOURCE ######################################
 
 class Vehicles(Resource):
+    @allow(['admin','customer_service'])
     def get(self):
         vehicles=[vehicle.to_dict() for vehicle in Vehicle.query.all()]
         if not vehicles:
@@ -228,7 +250,9 @@ class Vehicles(Resource):
                 "error":"no vehicles found"
             },400)
         return make_response(vehicles,200)
-
+    
+    @jwt_required()
+    @allow(['admin','customer_service'])
     def post(self):
         data=request.get_json()
         number_plate=data['number_plate']
@@ -269,6 +293,8 @@ api.add_resource(Vehicles,'/vehicles')
 
 
 class Vehicle_by_id(Resource):
+    @jwt_required()
+    @allow(['admin','customer_service'])
     def get(self,id):
         vehicle=Vehicle.query.filter_by(id=id).first()
         
@@ -278,6 +304,8 @@ class Vehicle_by_id(Resource):
             },400)
         return make_response(vehicle.to_dict(),200)
     
+    @jwt_required()
+    @allow(['admin','customer_service'])
     def delete(self,id):
         vehicle=Vehicle.query.filter_by(id=id).first()
         if not vehicle:
@@ -292,6 +320,8 @@ class Vehicle_by_id(Resource):
             "message":"vehicle deleted"
         },204)
     
+    @jwt_required()
+    @allow(['admin','customer_service'])
     def put(self,id):
         vehicle=Vehicle.query.filter_by(id=id).first()
         data=request.get_json()
@@ -312,6 +342,7 @@ api.add_resource(Vehicle_by_id,'/vehicles/<int:id>')
 ################################################### LOCATION RESOURCE ############################################################
 
 class Locations(Resource):
+    @allow(['admin','customer_service'])
     def get(self):
         locations=[location.to_dict() for location in Location.query.all()]
         
@@ -322,6 +353,8 @@ class Locations(Resource):
         
         return make_response(locations,200)
     
+    @jwt_required()
+    @allow(['admin'])
     def post(self):
         data=request.get_json()
         origin=data['origin']
@@ -339,6 +372,8 @@ class Locations(Resource):
         
         return make_response(location.to_dict(),200)
     
+    @jwt_required()
+    @allow(['admin'])
     def delete(self):
         locations=[location.to_dict() for location in Location.query.all()]
         
@@ -356,6 +391,8 @@ class Locations(Resource):
 api.add_resource(Locations,'/locations')
 
 class Locations_by_id(Resource):
+    @jwt_required()
+    @allow(['admin','customer_service'])
     def get(self,id):
         location=Location.query.filter_by(id=id).first()
         
@@ -366,6 +403,8 @@ class Locations_by_id(Resource):
             
         return make_response(location.to_dict(),200)
     
+    @jwt_required()
+    @allow(['admin'])
     def delete(self,id):
         location=Location.query.filter_by(id=id).first()
         if not location:
@@ -380,6 +419,8 @@ class Locations_by_id(Resource):
             "body":"Location is deleted"
         },204)
     
+    @jwt_required()
+    @allow(['admin','customer_service'])
     def put(self,id):
         location=Location.query.filter_by(id=id).first()
         data=request.get_json()
@@ -398,6 +439,9 @@ api.add_resource(Locations_by_id,'/locations/<int:id>')
 
 ################################################# CUSTOMER SERVICE RESOURCE ######################################################
 class Userparcels(Resource):
+    
+    @jwt_required()
+    @allow(['admin','customer_service'])
     def get(self,id):
         user=User.query.filter_by(id=id).first()
         
@@ -409,6 +453,8 @@ class Userparcels(Resource):
         
         return make_response(parcels,200)
     
+    @jwt_required()
+    @allow(['admin','customer_service'])
     def delete(self,id):
         user=User.query.filter_by(id=id).first()
         

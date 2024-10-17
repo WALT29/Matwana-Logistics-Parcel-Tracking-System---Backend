@@ -1,14 +1,30 @@
 from models import User,db
 from flask import Blueprint,request,make_response
-from werkzeug.security import generate_password_hash,check_password_hash
 from flask_restful import Api, Resource
-
-from flask_jwt_extended import create_access_token,create_refresh_token,JWTManager,get_jwt_identity,jwt_required
+from flask_jwt_extended import create_access_token,create_refresh_token,JWTManager,get_jwt_identity,jwt_required,get_jwt
+from functools import wraps
 
 jwt=JWTManager()
 
 auth_bp = Blueprint('auth_bp',__name__, url_prefix='/auth')
 api=Api(auth_bp)
+
+
+
+def allow(required_roles):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args,**kwargs):
+            jwt_claims=get_jwt()
+            user_role=jwt_claims.get('role',None)
+            
+            if user_role not in required_roles:
+                return make_response({
+                    "error":"Access forbidden"
+                },403)
+            return func(*args,**kwargs)
+        return wrapper
+    return decorator
 
 class Signup(Resource):
     def post(self):
@@ -63,12 +79,12 @@ class Login(Resource):
         
         
         if user and (user.check_password(password=password)):
-            access_token=create_access_token(identity=user.id)
+            access_token=create_access_token(identity=user.id,additonal_claims={"role":user.role})
             refresh_token=create_refresh_token(identity=user.id)
             
             return make_response({
                 "message":"logged in successfully",
-                "tokes":{
+                "tokens":{
                     "access_token":access_token,
                     "refresh_token":refresh_token
                 }
