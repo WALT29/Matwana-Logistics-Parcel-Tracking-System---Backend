@@ -1,6 +1,7 @@
-from models import User,db
+from models import User,db,TokenBlocklist
 from flask import Blueprint,request,make_response
 from flask_restful import Api, Resource
+from datetime import timezone
 from flask_jwt_extended import create_access_token,create_refresh_token,JWTManager,get_jwt,current_user,jwt_required,get_jwt_identity
 from functools import wraps
 
@@ -30,6 +31,14 @@ def allow(required_roles):
 def user_lookup_callback(_jwt_header,jwt_data):
     identity=jwt_data['sub']
     return User.query.filter_by(id=identity).first()
+
+@jwt.token_in_blocklist_loader
+def check_if_token_revoked(jwt_header, jwt_data):
+    jti = jwt_data["jti"]
+    token = TokenBlocklist.query.filter_by(jti=jti).first()
+
+    return token or None
+
 
 
 class Signup(Resource):
@@ -118,7 +127,19 @@ class UserIdentity(Resource):
                 "role":current_user.role
             }
         },200)
-        
+
+class Logout(Resource):
+    
+    @jwt_required()
+    def get(self):
+        jti = get_jwt()["jti"]
+        now = datetime.datetime.now(timezone.utc)
+        db.session.add(TokenBlocklist(jti=jti, created_at=now))
+        db.session.commit()
+        return make_response(
+            {"message": "You have been logged out"},
+            200
+        )
 
 api.add_resource(Login,'/login')
 api.add_resource(Signup,'/signup')
