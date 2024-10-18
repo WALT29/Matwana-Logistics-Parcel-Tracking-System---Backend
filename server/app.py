@@ -3,6 +3,7 @@ from flask_migrate import Migrate
 from flask import Flask, request, make_response
 from flask_restful import Api, Resource
 from flask_jwt_extended import jwt_required
+from flask_cors import CORS
 from auth import auth_bp,jwt,allow
 from datetime import timedelta
 import os
@@ -12,12 +13,12 @@ DATABASE = os.environ.get(
     "DB_URI", f"sqlite:///{os.path.join(BASE_DIR, 'app.db')}")
 
 app=Flask(__name__)
-
+CORS(app)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY']='e173db52f146f6d5e957a922'
-app.config['JWT_ACCESS_TOKEN_EXPIRES']=timedelta(hours=1)
+app.config['JWT_ACCESS_TOKEN_EXPIRES']=timedelta(hours=2)
 app.config['JWT_REFRESH_TOKEN_EXPIRES']=timedelta(days=3)
 app.register_blueprint(auth_bp)
 app.json.compact = False
@@ -113,7 +114,7 @@ class User_by_id(Resource):
             "message":"user delete successfully"
         },200)
     
-    @jwt_required
+    @jwt_required()
     @allow(['admin'])
     def put(self,id):
         user=User.query.filter_by(id=id).first()
@@ -144,6 +145,7 @@ class Parcels(Resource):
     def post(self):
         data=request.get_json()
         user_id=data['user_id']
+        name=data['name']
         description=data['description']
         tracking_number=data['tracking_number']
         weight=data['weight']
@@ -170,7 +172,7 @@ class Parcels(Resource):
             },400)
             
         
-        if not description or not weight >0:
+        if not description or not weight or not name:
             return make_response({
                 "errors":"please enter  all parcel information"
             },400)
@@ -178,6 +180,7 @@ class Parcels(Resource):
         shipping_cost=location.cost_per_kg*weight
        
         parcel=Parcel(
+            name=name,
             description=description,
             tracking_number=tracking_number,
             weight=weight,
@@ -193,7 +196,20 @@ class Parcels(Resource):
         db.session.add(parcel)
         db.session.commit()
         
-        return make_response(parcel.to_dict(),201)
+        parcel_dict={
+            "name":parcel.name,
+            "description":parcel.description,
+            "tracking_number":parcel.tracking_number,
+            "weight":parcel.weight,
+            "status":parcel.status,
+            "shipping_cost":parcel.shipping_cost,
+            "sender_id":parcel.sender_id,  
+            "recipient_id":parcel.recipient_id,
+            "location_id":parcel.location_id, 
+            "vehicle_id":parcel.vehicle_id  
+        }
+        
+        return make_response(parcel_dict,201)
 
 api.add_resource(Parcels,'/parcels')
 
@@ -247,13 +263,14 @@ api.add_resource(Parcel_by_id,'/parcels/<int:id>')
 ################################################## VEHICLES RESOURCE ######################################
 
 class Vehicles(Resource):
+    @jwt_required()
     @allow(['admin','customer_service'])
     def get(self):
         vehicles=[vehicle.to_dict() for vehicle in Vehicle.query.all()]
         if not vehicles:
             return make_response({
-                "error":"no vehicles found"
-            },400)
+                "message":"no vehicles found"
+            },200)
         return make_response(vehicles,200)
     
     @jwt_required()
@@ -294,6 +311,7 @@ class Vehicles(Resource):
         db.session.commit()
         
         return make_response(vehicle.to_dict(),200)
+
 api.add_resource(Vehicles,'/vehicles')
 
 
@@ -347,7 +365,6 @@ api.add_resource(Vehicle_by_id,'/vehicles/<int:id>')
 ################################################### LOCATION RESOURCE ############################################################
 
 class Locations(Resource):
-    @allow(['admin','customer_service'])
     def get(self):
         locations=[location.to_dict() for location in Location.query.all()]
         

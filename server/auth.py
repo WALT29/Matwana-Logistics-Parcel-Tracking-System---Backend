@@ -102,7 +102,9 @@ class Login(Resource):
                 "tokens":{
                     "access_token":access_token,
                     "refresh_token":refresh_token
-                }
+                },
+                "role":user.role,
+                "id":user.id
             },200)
         
         else:

@@ -26,7 +26,7 @@ class User(db.Model,SerializerMixin):
     
     #this is the relationship between customer service and the parcel 
     parcels = db.relationship('UserParcelAssignment', back_populates='user', cascade='all, delete-orphan')    
-    serialize_rules = ('-parcels', '-sent_parcels.sender', '-received_parcels.recipient', '-password')
+    serialize_rules = ('-parcels', '-sent_parcels.sender', '-received_parcels.recipient', '-password','-sent_parcels','-received_parcels')
     
     def __repr__(self):
         return f'<User {self.name}, Role: {self.role}>'
@@ -58,6 +58,7 @@ class User(db.Model,SerializerMixin):
 class Parcel(db.Model,SerializerMixin):
     __tablename__ = 'parcels'
     id = db.Column(db.Integer, primary_key=True)
+    name=db.Column(db.String, nullable=False)
     description = db.Column(db.String, nullable=False)
     tracking_number = db.Column(db.String, unique=True, nullable=False)
     weight = db.Column(db.Float, nullable=False)
@@ -79,7 +80,18 @@ class Parcel(db.Model,SerializerMixin):
     customer_service_assignments = db.relationship('UserParcelAssignment', back_populates='parcel', cascade='all, delete-orphan')
     
     serialize_rules = ('-sender.sent_parcels', '-recipient.received_parcels', '-vehicle.parcels', '-location.parcels', '-customer_service_assignments', 
-                       'id', 'tracking_number', 'status', 'shipping_cost', 'sender.name', 'recipient.name')
+                      'id', 'tracking_number', 'status', 'shipping_cost', 'sender.name', 'recipient.name','name')
+    serialize_rules = (
+        '-sender.sent_parcels', 
+        '-recipient.received_parcels', 
+        '-vehicle.parcels', 
+        '-location.parcels', 
+        '-customer_service_assignments', 
+        'id', 'tracking_number', 'status', 'shipping_cost', 
+        'sender.name', 'recipient.name', 'name'
+    )
+
+    
     def __repr__(self):
         return f'<Parcel {self.tracking_number}, {self.status}, Cost: {self.shipping_cost}>'
 
