@@ -5,6 +5,8 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy_serializer import SerializerMixin
 from werkzeug.security import generate_password_hash,check_password_hash
 
+
+
 metadata = MetaData(naming_convention={
     "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
 })
@@ -25,8 +27,11 @@ class User(db.Model,SerializerMixin):
     received_parcels = db.relationship('Parcel', foreign_keys='Parcel.recipient_id', back_populates='recipient')
     
     #this is the relationship between customer service and the parcel 
-    parcels = db.relationship('UserParcelAssignment', back_populates='user', cascade='all, delete-orphan')    
-    serialize_rules = ('-parcels', '-sent_parcels.sender', '-received_parcels.recipient', '-password','-sent_parcels','-received_parcels')
+    parcels = db.relationship('UserParcelAssignment', back_populates='user', cascade='all, delete-orphan')
+    
+    serialize_rules = ('-sent_parcels', '-received_parcels', '-parcels')    
+    
+
     
     def __repr__(self):
         return f'<User {self.name}, Role: {self.role}>'
@@ -79,17 +84,9 @@ class Parcel(db.Model,SerializerMixin):
     location=db.relationship('Location',back_populates='parcels')
     customer_service_assignments = db.relationship('UserParcelAssignment', back_populates='parcel', cascade='all, delete-orphan')
     
-    serialize_rules = ('-sender.sent_parcels', '-recipient.received_parcels', '-vehicle.parcels', '-location.parcels', '-customer_service_assignments', 
-                      'id', 'tracking_number', 'status', 'shipping_cost', 'sender.name', 'recipient.name','name')
-    serialize_rules = (
-        '-sender.sent_parcels', 
-        '-recipient.received_parcels', 
-        '-vehicle.parcels', 
-        '-location.parcels', 
-        '-customer_service_assignments', 
-        'id', 'tracking_number', 'status', 'shipping_cost', 
-        'sender.name', 'recipient.name', 'name'
-    )
+    serialize_rules = ('-customer_service_assignments', '-vehicle', '-location')
+    
+   
 
     
     def __repr__(self):
@@ -114,7 +111,8 @@ class Vehicle(db.Model,SerializerMixin):
     parcels = db.relationship('Parcel', back_populates='vehicle')
     location=db.relationship('Location',back_populates='vehicles')
     
-    serialize_rules = ('-location.vehicles','parcels.vehicle')
+    serialize_rules = ('-location',)
+    
 
     def __repr__(self):
         return f'<Vehicle {self.number_plate}, Driver: {self.driver_name}>'
@@ -131,7 +129,9 @@ class Location(db.Model,SerializerMixin):
     parcels=db.relationship('Parcel',back_populates='location')
     vehicles=db.relationship(Vehicle,back_populates='location')
     
-    serialize_rules = ('-vehicles.location', '-parcels.location')
+    serialize_rules = ('-parcels',)
+    
+    
     
     
 
@@ -151,6 +151,8 @@ class UserParcelAssignment(db.Model,SerializerMixin):
     user = db.relationship('User', back_populates='parcels')
     parcel = db.relationship('Parcel', back_populates='customer_service_assignments')
     serialize_rules = ('-user.parcels', '-parcel.customer_service_assignments')
+    
+    
 
     def __repr__(self):
         return f'<UserParcelAssignment User: {self.user_id}, Parcel: {self.parcel_id}>'

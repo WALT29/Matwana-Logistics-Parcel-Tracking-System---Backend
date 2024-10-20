@@ -6,8 +6,7 @@ from flask_jwt_extended import jwt_required
 from flask_cors import CORS
 from auth import auth_bp,jwt,allow
 from datetime import timedelta
-import os
-
+import os 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DATABASE = os.environ.get(
     "DB_URI", f"sqlite:///{os.path.join(BASE_DIR, 'app.db')}")
@@ -36,13 +35,25 @@ def index():
 
 class Users(Resource):
     @jwt_required()
-    @allow(['admin'])
+    @allow(['admin','customer_service'])
     def get(self):
-        response_body=[user.to_dict() for user in User.query.all()]
-        return make_response(response_body,200)
+        users=[]
+        for user in User.query.all():
+            response_body={
+                "id":user.id,
+                "name":user.name,
+                "phone_number":user.phone_number,
+                "email":user.email,
+                "role":user.role
+            }
+            users.append(response_body)
+        
+        return make_response(users,200)
+
+        
     
     @jwt_required()
-    @allow(['admin'])
+    @allow(['admin','customer_service'])
     def post(self):
         data=request.get_json()
         name=data['name']
@@ -89,7 +100,7 @@ api.add_resource(Users,'/users')
 
 class User_by_id(Resource):
     @jwt_required()
-    @allow(['admin'])
+    @allow(['admin','customer_service'])
     def get(self,id):
         user=User.query.filter_by(id=id).first()
         if not user:
@@ -99,7 +110,7 @@ class User_by_id(Resource):
         return make_response(user.to_dict(),200)
     
     @jwt_required()
-    @allow(['admin'])
+    @allow(['admin','customer_service'])
     def delete(self,id):
         user=User.query.filter_by(id=id).first()
         if not user:
@@ -115,7 +126,7 @@ class User_by_id(Resource):
         },200)
     
     @jwt_required()
-    @allow(['admin'])
+    @allow(['admin','customer_service'])
     def put(self,id):
         user=User.query.filter_by(id=id).first()
         if not user:
@@ -135,7 +146,7 @@ api.add_resource(User_by_id,'/users/<int:id>')
 ############################################## PARCEL RESOURCE ###################################################################
 class Parcels(Resource):
     @jwt_required()
-    @allow(['admin','customer_service'])
+    @allow(['admin','customer_service','customer'])
     def get(self):
         parcels=[parcel.to_dict() for parcel in Parcel.query.all()]
         return make_response(parcels,200)
@@ -215,7 +226,7 @@ api.add_resource(Parcels,'/parcels')
 
 class Parcel_by_id(Resource):
     @jwt_required()
-    @allow(['admin','customer_service'])
+    @allow(['admin','customer_service','customer'])
     def get(self,id):
         parcel=Parcel.query.filter_by(id=id).first()
         
@@ -227,7 +238,7 @@ class Parcel_by_id(Resource):
         return make_response(parcel.to_dict(),200)
     
     @jwt_required()
-    @allow(['admin','customer_service'])
+    @allow(['admin','customer_service','customer'])
     def delete(self,id):
         parcel=Parcel.query.filter_by(id=id).first()
         if not parcel:
@@ -236,9 +247,10 @@ class Parcel_by_id(Resource):
             },400)
         
         db.session.delete(parcel)
+        db.session.commit()
         return make_response({
             "message":"parcel successfully deleted"
-        },204)
+        },200)
     
     @jwt_required()
     @allow(['admin','customer_service'])
