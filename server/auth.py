@@ -110,7 +110,7 @@ class Login(Resource):
         else:
             return make_response({
                 "message":"Invalid username or password"
-            },400)
+            },200)
     @jwt_required(refresh=True)
     def get(self):
         identity=get_jwt_identity
