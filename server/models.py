@@ -4,6 +4,7 @@ from sqlalchemy.orm import validates
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy_serializer import SerializerMixin
 from werkzeug.security import generate_password_hash,check_password_hash
+from datetime import datetime,timezone,timedelta
 
 
 
@@ -69,7 +70,7 @@ class Parcel(db.Model,SerializerMixin):
     weight = db.Column(db.Float, nullable=False)
     status = db.Column(db.String, nullable=False, default='Pending')  # (pending,in_transit,delivered)
     shipping_cost = db.Column(db.Float)
-    created_at = db.Column(db.DateTime, default=db.func.now())
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone(timedelta(hours=3))))
 
     #FOREIGN IDS
     sender_id = db.Column(db.Integer, db.ForeignKey('users.id'))

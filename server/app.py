@@ -177,7 +177,7 @@ class Parcels(Resource):
                 "error":"Invalid user Id or insufficient permission"
             },403)
         
-        if not sender or not recipient or not vehicle or not location:
+        if not sender or not recipient or not location:
             return make_response({
                 "error":"Please enter a valid sender,recipient,vehicle or location details"
             },400)
@@ -275,8 +275,6 @@ api.add_resource(Parcel_by_id,'/parcels/<int:id>')
 ################################################## VEHICLES RESOURCE ######################################
 
 class Vehicles(Resource):
-    @jwt_required()
-    @allow(['admin','customer_service'])
     def get(self):
         vehicles=[vehicle.to_dict() for vehicle in Vehicle.query.all()]
         if not vehicles:
